@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "ttsu to GSM",
+  "version": "1.0",
+  "description": "save important status to be transfered to GSM",
+  "permissions": ["scripting","storage","unlimitedStorage"],
+  "content_scripts": [
+    {
+      "js": ["scripts/content.js"],
+      "matches": [
+        "https://reader.ttsu.app/b?*"
+      ]
+    }
+  ]
+}
