@@ -3,12 +3,18 @@
   "name": "ttsu to GSM",
   "version": "1.0",
   "description": "save important status to be transfered to GSM",
-  "permissions": ["scripting","storage","unlimitedStorage"],
+  "permissions": ["scripting","storage","unlimitedStorage","webNavigation","tabs"],
+  "action": {
+    "default_popup": "popup/settings.html"
+  },
+  "background":{
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "js": ["scripts/content.js"],
       "matches": [
-        "https://reader.ttsu.app/b?*"
+        "https://reader.ttsu.app/*"
       ]
     }
   ]

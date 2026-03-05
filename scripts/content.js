@@ -2,12 +2,18 @@ let bookTitle;
 let chapterId;
 let paragraphs;
 let checkbox_array;
+let bookContentEl = null;
 let bookData = {};
 let storage_loaded = false;
 let db;
 const request = indexedDB.open("BooksDB",1);
 let Bookid = null;
 let intilize = false;
+let lasturl = location.href;
+
+
+
+
 
 request.onsuccess = (event) => {
   db = event.target.result;
@@ -47,14 +53,15 @@ async function inti() {
             let result = event.target.result;
             if(result){
                 Bookid= result.id;
+                console.log(`Bookid is ${Bookid}`);
             } else{
                 let book ={Title:bookTitle};
                 let NewBookRequest = Metadata.add(book);
                 NewBookRequest.onsuccess = (event) =>{
                     Bookid = event.target.result;
+                    console.log(`Bookid is ${Bookid}`);
                 }
             }
-            console.log(`Bookid is ${Bookid}`);
         };
         transaction.oncomplete= () =>{
             console.log("book was loaded");
@@ -75,13 +82,18 @@ async function addCheckboxes() {
             let chapter = checkbox.getAttribute("data-chapter");
             let index =parseInt(checkbox.getAttribute('data-index'));
             realCheckbox = document.querySelector('[data-index="'+index+'"]');
-            if (checkbox.checked ===false && realCheckbox.checked ===false){
+            try {
+                if (checkbox.checked ===false && realCheckbox.checked ===false){
                 send_text(checkbox,index,chapter);
                 if (realCheckbox){
                     realCheckbox.checked = true;
                     realCheckbox.disabled = true;
                 }
             }
+            } catch (error) {
+                
+            }
+            
         });
         previous_paragraphs = [];
       }
@@ -160,17 +172,8 @@ async function send_text(element,index,chapter){
     });
     
 }
-let test = 0;
-const observer = new MutationObserver(async () => {
-    let main = document.querySelector(".main");
 
-    if (main){
-        console.log("test exsist: "+test);
-        test = test+1;
-    }else {
-        console.log("test no exsist: "+test);
-        test = test+1;
-    }
+async function processChapter(){
     let bookTitletemp = document.querySelector("head title");
     let chapter = document.querySelector(".book-content-container");
     if(!chapter || !bookTitletemp) return;
@@ -182,7 +185,7 @@ const observer = new MutationObserver(async () => {
         bookTitle = newTitle;
         storage_loaded = false;
     }
-    if(chapter.id == chapterId)return;
+    if(chapter.id == chapterId || chapter.id =="" || chapter.id == "ttu-p-cover")return;
     chapterId = chapter.id;
     console.log("chapter id was obtained: ",chapterId);
 
@@ -193,9 +196,30 @@ const observer = new MutationObserver(async () => {
     }
     console.log("add checkboxes triggered");
     await addCheckboxes();
+}
+const observer = new MutationObserver(processChapter);
+
+const bodyObserver = new MutationObserver(async () =>{
+    bookContentEl = document.querySelector(".book-content");
+    if (bookContentEl){
+        console.log("Book Content ready!");
+        bodyObserver.disconnect();
+        observer.observe(bookContentEl, {
+            childList: true,
+            subtree: true
+        });
+        
+    }
 });
 
-observer.observe(document.body, {
-    childList: true,
-    subtree: true
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action === "activateExtension") {
+    bodyObserver.observe(document.body,{
+        childList: true,
+        subtree: true
+    });
+  }
 });
+
+
+
