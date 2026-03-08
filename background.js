@@ -1,7 +1,7 @@
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if (reason === 'install') {
     chrome.storage.local.set({
-      settings: {Active: true, Hide:false, Clipboard:false, WSPort:"9012"}
+      settings: {Active: true, Hide:false, Clipboard:false, WS:true, WSPort:"ws://localhost:9012"}
     });
   }
 });

@@ -2,16 +2,17 @@ let settings;
 let ActiveCheckbox = document.querySelector("#activeCheckbox");
 let HideCheckbox = document.querySelector("#hideCheckbox");
 let ClipboardCheckbox = document.querySelector("#clipboardCheckbox");
+let WebsocketCheckbox = document.querySelector("#websocketCheckbox")
 let WSPort = document.querySelector("#websocket");
 
 async function getSettings(){
 await chrome.storage.local.get("settings").then(result=>{
-    settings = result["settings"]||{Active:false,Hide:false,Clipboard:false,WSPort:"9012"};
+    settings = result["settings"]||{Active:false,Hide:false,Clipboard:false,WS:false,WSPort:"ws://localhost:9012"};
 
     ActiveCheckbox.checked = settings["Active"];
-    
     HideCheckbox.checked = settings["Hide"];
     ClipboardCheckbox.checked = settings["Clipboard"];
+    WebsocketCheckbox.checked = settings["WS"];
     WSPort.value = settings["WSPort"];
 });
 }
@@ -31,6 +32,11 @@ document.addEventListener("DOMContentLoaded",()=>{
 
     ClipboardCheckbox.addEventListener("change", async (event)=>{
         settings["Clipboard"] = event.target.checked;
+        await chrome.storage.local.set({settings:settings});
+    });
+
+    WebsocketCheckbox.addEventListener("change", async (event)=>{
+        settings["WS"] = event.target.checked;
         await chrome.storage.local.set({settings:settings});
     });
 

@@ -1,6 +1,6 @@
 let bookTitle;
 let chapterId;
-let paragraphs;
+let paragraphs = [];
 let checkbox_array;
 let bookContentEl = null;
 let bookData = {};
@@ -9,11 +9,15 @@ let db;
 const request = indexedDB.open("BooksDB",1);
 let Bookid = null;
 let intilize = false;
-let lasturl = location.href;
 let settings;
 
+chrome.storage.local.get("settings").then(result =>{
+    settings = result["settings"];
+});
 
+function websockectConnection(){
 
+}
 
 
 request.onsuccess = (event) => {
@@ -73,34 +77,36 @@ async function inti() {
     });
 } 
 let previous_paragraphs = [];
+let ISObserver;
 async function addCheckboxes() {
-    await chrome.storage.local.get("settings").then(result =>{
-            settings = result["settings"];
-        });
     paragraphs = document.querySelectorAll(".p-text p");
     let container = document.querySelector(".book-content");
-    const observer = new IntersectionObserver(entries => {
+    ISObserver = new IntersectionObserver(entries => {
         if (previous_paragraphs.length != 0){
             previous_paragraphs.forEach(p =>{
             checkbox = p.firstElementChild;
-            let chapter = checkbox.getAttribute("data-chapter");
-            let index =parseInt(checkbox.getAttribute('data-index'));
-            realCheckbox = document.querySelector('[data-index="'+index+'"]');
-            try {
+            if (checkbox){
+                try {
+                let chapter = checkbox.getAttribute("data-chapter");
+                let index =parseInt(checkbox.getAttribute('data-index'));
+                realCheckbox = document.querySelector('[data-index="'+index+'"]');
+            
                 if (checkbox.checked ===false && realCheckbox.checked ===false){
-                send_text(checkbox,index,chapter);
-                if (realCheckbox){
-                    realCheckbox.checked = true;
-                    realCheckbox.disabled = true;
+                    send_text(checkbox,index,chapter);
+                    if (realCheckbox){
+                        realCheckbox.checked = true;
+                        realCheckbox.disabled = true;
+                    }
                 }
-            }
             } catch (error) {
-                
+                console.error(error);
+            }
             }
             
         });
         previous_paragraphs = [];
       }
+      
   entries.forEach(entry => {
     if (entry.isIntersecting) {
       previous_paragraphs.push(entry.target.cloneNode(true));
@@ -111,7 +117,8 @@ async function addCheckboxes() {
   threshold: 1
 });
 
-paragraphs.forEach(p => observer.observe(p));
+
+paragraphs.forEach(p => ISObserver.observe(p));
 
 
     if (paragraphs.length===0)return;
@@ -125,7 +132,6 @@ paragraphs.forEach(p => observer.observe(p));
 
 
     paragraphs.forEach((p,index) => {
-        // Prevent duplicates
         if (!p.dataset.checkboxAdded && p.textContent !="") {
             const checkbox = document.createElement("input");
             checkbox.type = "checkbox";
@@ -179,6 +185,8 @@ async function send_text(element,index,chapter){
 }
 
 async function processChapter(){
+    console.log("working");
+    
     let bookTitletemp = document.querySelector("head title");
     let chapter = document.querySelector(".book-content-container");
     if(!chapter || !bookTitletemp) return;
@@ -190,12 +198,14 @@ async function processChapter(){
         bookTitle = newTitle;
         storage_loaded = false;
     }
-    if(chapter.id == chapterId || chapter.id =="" || chapter.id == "ttu-p-cover")return;
+    if(chapterId == chapter.id || chapter.id =="" || chapter.id == "ttu-p-cover")return;
     chapterId = chapter.id;
     console.log("chapter id was obtained: ",chapterId);
 
     if(!storage_loaded && !intilize){
         intilize = true;
+        console.log("test");
+        
         await inti();
         intilize = false;
     }
@@ -218,7 +228,7 @@ const bodyObserver = new MutationObserver(async () =>{
 });
 
 chrome.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
-  if (msg.action === "activateExtension") {
+  if (msg.action === "activateExtension" && settings["Active"] ===true) {
     bodyObserver.observe(document.body,{
         childList: true,
         subtree: true
@@ -226,15 +236,48 @@ chrome.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
   } 
 });
 
-chrome.storage.onChanged.addListener((changes, area)=>{
+chrome.storage.onChanged.addListener(async (changes, area)=>{
     if (area !== "local") return;
 
     if (!changes.settings) return;
 
     let newSettings = changes.settings.newValue;
 
+    if(newSettings["Active"] != settings["Active"]){
+            if(newSettings["Active"] == true){
+                bookContentEl = document.querySelector(".book-content");
+                if (bookContentEl){
+                    observer.observe(bookContentEl, {
+                        childList: true,
+                        subtree: true
+                    });
+                    await processChapter();
+                } else{
+                    bodyObserver.observe(document.body,{
+                        childList: true,
+                        subtree: true
+                    })
+                }
+            } else{
+                    observer.disconnect();
+                    if (ISObserver) ISObserver.disconnect();
+                    paragraphs.forEach(p =>{
+                        let checkbox = p.querySelector('input[type="checkbox"]');
+                        if (checkbox){
+                            checkbox.remove();
+                        }
+                        p.removeAttribute("data-checkbox-added");
+                    });
+                    paragraphs =[];
+                    previous_paragraphs =[];
+                    bookTitle = "";
+                    chapterId = "";
+                    storage_loaded = false;
+                    Bookid = null;
+                }
+    }
+
     if (paragraphs.length > 0){        
-        
         if (newSettings["Hide"] != settings["Hide"]){
             console.log("paragraps length: ", paragraphs.length);
             console.log("Hide changed:", newSettings.Hide);
