@@ -10,6 +10,7 @@ const request = indexedDB.open("BooksDB",1);
 let Bookid = null;
 let intilize = false;
 let lasturl = location.href;
+let settings;
 
 
 
@@ -73,6 +74,9 @@ async function inti() {
 } 
 let previous_paragraphs = [];
 async function addCheckboxes() {
+    await chrome.storage.local.get("settings").then(result =>{
+            settings = result["settings"];
+        });
     paragraphs = document.querySelectorAll(".p-text p");
     let container = document.querySelector(".book-content");
     const observer = new IntersectionObserver(entries => {
@@ -129,6 +133,7 @@ paragraphs.forEach(p => observer.observe(p));
             checkbox.dataset.index = index;
             checkbox.dataset.chapter = chapterId;
             checkbox.checked = bookData[chapterId][index];
+            checkbox.hidden = settings["Hide"];
             console.log(bookData[chapterId][index]);
             if(checkbox.checked === true){
                 checkbox.disabled = true;
@@ -212,14 +217,37 @@ const bodyObserver = new MutationObserver(async () =>{
     }
 });
 
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (msg, sender, sendResponse) => {
   if (msg.action === "activateExtension") {
     bodyObserver.observe(document.body,{
         childList: true,
         subtree: true
     });
-  }
+  } 
 });
+
+chrome.storage.onChanged.addListener((changes, area)=>{
+    if (area !== "local") return;
+
+    if (!changes.settings) return;
+
+    let newSettings = changes.settings.newValue;
+
+    if (paragraphs.length > 0){        
+        
+        if (newSettings["Hide"] != settings["Hide"]){
+            console.log("paragraps length: ", paragraphs.length);
+            console.log("Hide changed:", newSettings.Hide);
+            
+            paragraphs.forEach(p=>{
+            p.firstElementChild.hidden = newSettings["Hide"];
+            });
+        }
+    }
+    
+    settings = newSettings;
+    
+})
 
 
 

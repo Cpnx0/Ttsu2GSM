@@ -1,3 +1,11 @@
+chrome.runtime.onInstalled.addListener(({ reason }) => {
+  if (reason === 'install') {
+    chrome.storage.local.set({
+      settings: {Active: true, Hide:false, Clipboard:false, WSPort:"9012"}
+    });
+  }
+});
+
 
 chrome.webNavigation.onHistoryStateUpdated.addListener((details)=>{
     const url = new URL(details.url);
