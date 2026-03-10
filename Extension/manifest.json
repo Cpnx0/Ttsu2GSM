@@ -3,7 +3,7 @@
   "name": "Ttsu2GSM",
   "version": "1.0",
   "description": "save important status to be transfered to GSM",
-  "permissions": ["scripting","storage","unlimitedStorage","webNavigation","tabs"],
+  "permissions": ["scripting","storage","unlimitedStorage","webNavigation","tabs","downloads"],
   "host_permissions": [
   "ws://localhost:9012/",
   "ws://127.0.0.1:9012/"

@@ -5,72 +5,28 @@ let checkbox_array;
 let bookContentEl = null;
 let bookData = {};
 let storage_loaded = false;
-let db;
-const request = indexedDB.open("BooksDB",1);
 let Bookid = null;
 let intilize = false;
 let settings;
+let clipboardQueue = [];
+let isProcessingClipboard = false;
 
-
-chrome.storage.local.get("settings").then(result =>{
+chrome.storage.local.get("settings").then(result => {
     settings = result["settings"];
 });
 
-request.onsuccess = (event) => {
-  db = event.target.result;
-  db.onerror = (event) => {
-
-  console.error(`Database error: ${event.target.error?.message}`);
-};
-};
-
-request.onupgradeneeded = (event) =>{
-    db = event.target.result;
-
-    const MetaData = db.createObjectStore("Metadata", { keyPath: "id",autoIncrement: true });
-
-    MetaData.createIndex("Title","Title", {unique:true});
-    
-    const Content = db.createObjectStore("Content", {keyPath:"id", autoIncrement:true});
-
-    Content.createIndex("Text","Text", {unique:false});
-    Content.createIndex("Bookid","Bookid",{unique:false});
-    Content.createIndex("Time","Time",{unique:false});
-}
-
-
-async function loadBook(bookTitle) {
-
-    await chrome.storage.local.get(bookTitle).then(result =>{
+function inti() {
+    chrome.storage.local.get(bookTitle).then(result =>{
         bookData= result[bookTitle]||{};
-    });
-}
-
-async function inti() {
-    await loadBook(bookTitle).then(result =>{
-        let transaction = db.transaction(["Metadata"],"readwrite");
-        let Metadata = transaction.objectStore("Metadata")
-        let request =Metadata.index("Title").get(bookTitle);
-        request.onsuccess = (event) => {
-            let result = event.target.result;
-            if(result){
-                Bookid= result.id;
-                console.log(`Bookid is ${Bookid}`);
-            } else{
-                let book ={Title:bookTitle};
-                let NewBookRequest = Metadata.add(book);
-                NewBookRequest.onsuccess = (event) =>{
-                    Bookid = event.target.result;
-                    console.log(`Bookid is ${Bookid}`);
-                }
+        chrome.runtime.sendMessage(
+            { action: "getOrCreateBook", title: bookTitle },
+            (response) => {
+                Bookid = response.bookId;
+                storage_loaded = true;
+                intilize = false;
+                addCheckboxes();
             }
-        };
-        transaction.oncomplete= () =>{
-            console.log("book was loaded");
-            storage_loaded = true;
-        }
-
-        
+        );
     });
 } 
 let previous_paragraphs = [];
@@ -111,7 +67,7 @@ async function addCheckboxes() {
   });
 }, {
   root: container,
-  threshold: 1
+  threshold: 0
 });
 
 
@@ -160,32 +116,49 @@ function remove_furigana(element){
     return p_element.textContent;
 }
 
+
+function processClipboardQueue() {
+    if (isProcessingClipboard || clipboardQueue.length === 0) return;
+    
+    isProcessingClipboard = true;
+    let text = clipboardQueue.shift();
+    
+    navigator.clipboard.writeText(text).then(() => {
+        setTimeout(() => {
+            isProcessingClipboard = false;
+            processClipboardQueue();
+        }, 300); 
+    }).catch((err) => {
+        console.error("Clipboard error:", err);
+        isProcessingClipboard = false;
+        processClipboardQueue();
+    });
+}
+
 async function send_text(element,index,chapter){
     let text = remove_furigana(element.parentElement);
     bookData[chapter][index]= true;
-    await chrome.storage.local.set({[bookTitle]:bookData}).then(result=>{
-    let transaction = db.transaction(["Content"],"readwrite");
-    let content = transaction.objectStore("Content");
-    let time = Math.floor(Date.now() / 1000);
-    let book = {
-        Bookid: Bookid,
-        Text:text,
-        Time:time
-    };
-    let request = content.add(book);
-    request.onsuccess= (event) =>{
-        element.disabled = true;
-        console.log(book);
-        if (settings?.WS) {
-            chrome.runtime.sendMessage({ action: "sendText", text: text });
-        }
+    if (settings?.Clipboard){
+        clipboardQueue.push(text);
+        processClipboardQueue();
     }
+    await chrome.storage.local.set({[bookTitle]:bookData}).then(result=>{
+        chrome.runtime.sendMessage({
+            action: "insertContent",
+            bookId: Bookid,
+            text:text,
+            time: Math.floor(Date.now()/1000)
+        },()=>{
+            element.disabled = true;
+            if (settings?.WS && !settings?.Clipboard) {
+                chrome.runtime.sendMessage({ action: "sendText", text: text });
+            }
+        })
     });
     
 }
 
 async function processChapter(){
-    console.log("working");
     
     let bookTitletemp = document.querySelector("head title");
     let chapter = document.querySelector(".book-content-container");
@@ -204,13 +177,12 @@ async function processChapter(){
 
     if(!storage_loaded && !intilize){
         intilize = true;
-        console.log("test");
-        
-        await inti();
-        intilize = false;
+        inti();
+        return;
     }
-    console.log("add checkboxes triggered");
-    await addCheckboxes();
+    if (storage_loaded){
+        await addCheckboxes();
+    }
 }
 const observer = new MutationObserver(processChapter);
 

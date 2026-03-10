@@ -4,6 +4,7 @@ let HideCheckbox = document.querySelector("#hideCheckbox");
 let ClipboardCheckbox = document.querySelector("#clipboardCheckbox");
 let WebsocketCheckbox = document.querySelector("#websocketCheckbox")
 let WSPort = document.querySelector("#websocket");
+let ExportBtn = document.querySelector("#export");
 
 async function getSettings(){
 await chrome.storage.local.get("settings").then(result=>{
@@ -19,6 +20,9 @@ await chrome.storage.local.get("settings").then(result=>{
 
 document.addEventListener("DOMContentLoaded",()=>{
     getSettings();
+
+    const accordionCollapseElementList = document.querySelectorAll('#myAccordion .collapse');
+    const accordionCollapseList = [...accordionCollapseElementList].map(accordionCollapseEl => new bootstrap.Collapse(accordionCollapseEl));
 
     ActiveCheckbox.addEventListener("change", async (event)=>{
     settings["Active"] = event.target.checked;
@@ -44,5 +48,12 @@ document.addEventListener("DOMContentLoaded",()=>{
         settings["WSPort"] = event.target.value;
         await chrome.storage.local.set({settings:settings});
     });
+
+    ExportBtn.addEventListener("click", async (event) =>{
+        let StartDate = document.querySelector("#startDate").value;
+        let EndDate = document.querySelector("#endDate").value;
+
+        chrome.runtime.sendMessage({ action: "exportCSV", StartDate:StartDate, EndDate:EndDate });
+    })
 });
 

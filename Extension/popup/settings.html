@@ -6,9 +6,18 @@
     <link href="css/bootstrap.min.css" rel="stylesheet">
 </head>
 
-<body class="rounded-2" style="height: 300px; width: 400px;">
-    <div class="card" style="height: 300px; width: 400px;">
-    <div class="card-body form-switch form-check">
+<body class="rounded-2">
+    <div class="card" style="width: 400px;">
+    <div class="card-body form-switch form-check p-0">
+        <div class="accordion accordion-flush" id="accordion">
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+        settings
+      </button>
+    </h2>
+    <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#accordion">
+      <div class="accordion-body">
         <div class="mt-3 row">
             <label for="activeCheckbox" class="text-capitalize form-label">turn on/off the extension</label>
             <input type="checkbox" name="activeCheckbox" id="activeCheckbox" role="switch" class="form-check-input h5">
@@ -33,6 +42,35 @@
             <label for="websocket" class="text-center text-capitalize">websocket port</label>
             <input type="text" name="websocket" id="websocket" class="form-control form-text text-center w-75">
         </div>
+      </div>
+    </div>
+  </div>
+  <div class="accordion-item">
+    <h2 class="accordion-header">
+      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+        Export
+      </button>
+    </h2>
+    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordion">
+      <div class="accordion-body">
+        <div class="row mt-3 justify-content-center">
+            <label for="export" class="text-center text-capitalize form-label">Date Range (Optinal)</label>
+            <div class="col-6">
+                <label class="text-capitalize form-label" for="startDate">start date</label>
+                <input type="date" name="startDate" id="startDate" class="form-control">
+            </div>
+            <div class="col-6">
+                <label for="endDate" class="text-capitalize form-label">end date</label>
+                <input type="date" name="endDate" id="endDate" class="form-control">
+            </div>
+            <button id="export" name="export" class="btn btn-success text-capitalize text-center rounded mt-3">Export</button>
+            <a class="link-underline link-underline-opacity-0 text-capitalize text-center mt-3" href="http://localhost:7275/api/docs#/Import%2FExport/post_api_import_exstatic" target="_blank">import CSV file</a>
+        </div>
+      </div>
+    </div>
+  </div>
+        </div>
+        
 
     </div>
     </div>
