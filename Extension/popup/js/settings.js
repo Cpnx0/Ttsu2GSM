@@ -49,11 +49,29 @@ document.addEventListener("DOMContentLoaded",()=>{
         await chrome.storage.local.set({settings:settings});
     });
 
-    ExportBtn.addEventListener("click", async (event) =>{
+    ExportBtn.addEventListener("click", (event) =>{
         let StartDate = document.querySelector("#startDate").value;
         let EndDate = document.querySelector("#endDate").value;
+        let importCheckbox = document.querySelector("#importCheckbox").checked;
+        let spinner = document.querySelector("#spinner");
+        spinner.removeAttribute("hidden");
+        chrome.runtime.sendMessage({ action: "exportCSV", StartDate:StartDate, EndDate:EndDate, Import:importCheckbox });
+    })
 
-        chrome.runtime.sendMessage({ action: "exportCSV", StartDate:StartDate, EndDate:EndDate });
+    chrome.runtime.onMessage.addListener((msg, sender, sendResponse) =>{
+        if (msg.action == "exportResult"){
+            let spinner = document.querySelector("#spinner");
+            let success = document.querySelector("#exportSuccess");
+            let failed = document.querySelector("#exportFailed");
+            if (!spinner.hasAttribute("hidden")){
+                spinner.hidden = true;
+            }
+            if (msg.success === true){
+                success.removeAttribute("hidden");
+            } else{
+                failed.removeAttribute("hidden");
+            }
+        }
     })
 });
 

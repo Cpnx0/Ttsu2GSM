@@ -2,14 +2,21 @@
   "manifest_version": 3,
   "name": "Ttsu2GSM",
   "version": "1.0",
-  "description": "save important status to be transfered to GSM",
+  "description": "Store text lines in Ttsu reader for GSM Stats",
   "permissions": ["scripting","storage","unlimitedStorage","webNavigation","tabs","downloads"],
   "host_permissions": [
   "ws://localhost:9012/",
-  "ws://127.0.0.1:9012/"
+  "ws://127.0.0.1:9012/",
+  "http://localhost:7275/*"
 ],
   "action": {
     "default_popup": "popup/settings.html"
+  },
+  "icons": {
+    "16": "images/icon-16.png",
+    "32": "images/icon-32.png",
+    "48": "images/icon-48.png",
+    "128": "images/icon-128.png"
   },
   "background":{
     "service_worker": "background.js"

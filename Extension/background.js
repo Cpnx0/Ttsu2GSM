@@ -100,7 +100,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       request.onsuccess = () => sendResponse({ success: true });
       return true;
       } else if (msg.action === "exportCSV") {
-        exportCSV(msg.StartDate,msg.EndDate);
+        exportCSV(msg.StartDate,msg.EndDate, msg.Import);
     }
 
 });
@@ -153,7 +153,7 @@ chrome.webNavigation.onCompleted.addListener((details) => {
   }
 }, { url: [{ hostEquals: "reader.ttsu.app" }] });
 
-function exportCSV(StartDate,EndDate){
+function exportCSV(StartDate,EndDate, Import){
   let transaction = db.transaction(["Content", "Metadata"], "readonly");
   let ContentTable = transaction.objectStore("Content");
   let MetadataTable = transaction.objectStore("Metadata");
@@ -208,13 +208,40 @@ function exportCSV(StartDate,EndDate){
       });
       
       let csv = rows.map(r => r.join(",")).join("\n");
-      let url = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+      
+      if(Import === true){
+        let file = new File([csv], `${filename}.csv`, { type:"text/csv"});
 
-      chrome.downloads.download({
+        let formData = new FormData();
+        formData.append("file", file);
+        try {
+          fetch("http://localhost:7275/api/import-exstatic", {
+            method: "POST",
+            body: formData
+          }).then(result =>{
+            
+            if (result.ok){
+              chrome.runtime.sendMessage({action:"exportResult", success:true});
+            } else{
+              chrome.runtime.sendMessage({action:"exportResult", success:false});
+            }
+          })
+        } catch (error) {
+          console.log(error);
+          
+          chrome.runtime.sendMessage({action:"exportResult", success:false});
+        }
+      } else{
+        let url = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+
+        chrome.downloads.download({
         url: url,
         filename: `${filename}.csv`,
         saveAs: true
       });
+      chrome.runtime.sendMessage({action:"exportResult", success:true});
+      }
+      
     }
   }
 
