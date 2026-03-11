@@ -27,7 +27,7 @@ Ttsu2GSM is a chrome browser extension that automatically mark the lines you rea
 
 2- page columns set to 1 (multi columns not tested).
 
-## Websocket setup:
+## Websocket:
 1- install python.
 
 2- install websockets library for python with `pip install websockets`.
@@ -38,6 +38,13 @@ Ttsu2GSM is a chrome browser extension that automatically mark the lines you rea
 
 4- open cmd in the repo folder and run Websocket Server using `python Websocket_Server.py` and activate websocket in the extension settings.
 
+
+## import CSV file to GSM:
+1- open the "Import CSV File" link in export option (while GSM is running).
+
+2- in Import/Export section you can upload your file.
+
+![Impor](Assets/import.png)
 
 ## Acknowledgements:
 1- [GSM](https://github.com/bpwhelan/GameSentenceMiner) (GameSentenceMiner)
