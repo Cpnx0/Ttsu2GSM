@@ -1,6 +1,5 @@
 <div style="text-align: center;">
 
-  ![icon](Assets/Icon.png)
   # Ttsu2GSM
 Browser Extension to Store and send text from ttsu reader to GSM
 </div>
