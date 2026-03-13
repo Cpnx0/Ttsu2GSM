@@ -15,7 +15,7 @@ async def handle_client(websocket):
                     if client != websocket:
                         await client.send(message)
     finally:
-        connected_clients.remove(websocket)
+        connected_clients.discard(websocket)
         print("Client disconnected")
 
 async def main():

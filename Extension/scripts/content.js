@@ -10,6 +10,8 @@ let intilize = false;
 let settings;
 let clipboardQueue = [];
 let isProcessingClipboard = false;
+let WSQueue = [];
+let isProcessingWS = false;
 
 chrome.storage.local.get("settings").then(result => {
     settings = result["settings"];
@@ -135,6 +137,20 @@ function processClipboardQueue() {
     });
 }
 
+function processWSQueue() {
+    if (isProcessingWS || WSQueue.length === 0) return;
+    
+    isProcessingWS = true;
+    let text = WSQueue.shift();
+    
+    chrome.runtime.sendMessage({ action: "sendText", text: text }, () => {
+        setTimeout(() => {
+            isProcessingWS = false;
+            processWSQueue();
+        }, 200);
+    });
+}
+
 async function send_text(element,index,chapter){
     let text = remove_furigana(element.parentElement);
     bookData[chapter][index]= true;
@@ -151,7 +167,8 @@ async function send_text(element,index,chapter){
         },()=>{
             element.disabled = true;
             if (settings?.WS && !settings?.Clipboard) {
-                chrome.runtime.sendMessage({ action: "sendText", text: text });
+                WSQueue.push(text);
+                processWSQueue();
             }
         })
     });
@@ -171,7 +188,7 @@ async function processChapter(){
         bookTitle = newTitle;
         storage_loaded = false;
     }
-    if(chapterId == chapter.id || chapter.id =="" || chapter.id == "ttu-p-cover")return;
+    if(chapterId == chapter.id || chapter.id ==="" || chapter.id == "ttu-p-cover")return;
     chapterId = chapter.id;
     console.log("chapter id was obtained: ",chapterId);
 
