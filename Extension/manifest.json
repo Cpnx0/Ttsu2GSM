@@ -25,7 +25,8 @@
     {
       "js": ["scripts/content.js"],
       "matches": [
-        "https://reader.ttsu.app/*"
+        "https://reader.ttsu.app/*",
+        "https://kamperemu.github.io/ebook-reader/*"
       ]
     }
   ]
