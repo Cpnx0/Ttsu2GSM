@@ -5,7 +5,7 @@ let checkbox_array;
 let bookContentEl = null;
 let bookData = {};
 let storage_loaded = false;
-let Bookid = null;
+let bookId = null;
 let intilize = false;
 let settings;
 let clipboardQueue = [];
@@ -13,8 +13,12 @@ let isProcessingClipboard = false;
 let WSQueue = [];
 let isProcessingWS = false;
 let observerRunning = false;
-let mokuro = false;
-let manatan = false;
+let mode = null;
+let pendingParagraphs = new Set();
+let ISObserver;
+let container;
+let contentWrapper;
+let parahraphSelector;
 
 chrome.storage.local.get("settings").then((result) => {
   settings = result["settings"];
@@ -22,68 +26,97 @@ chrome.storage.local.get("settings").then((result) => {
 });
 
 function inti() {
-  console.log(bookTitle);
-
   chrome.storage.local.get(bookTitle).then((result) => {
     bookData = result[bookTitle] || {};
     chrome.runtime.sendMessage(
       { action: "getOrCreateBook", title: bookTitle },
       (response) => {
-        Bookid = response.bookId;
+        bookId = response.bookId;
         storage_loaded = true;
         intilize = false;
-        if(mokuro) {
-          addCheckboxesMokuro();
-        } else if(manatan) {
-          addCheckboxesManatan();
-        } else {
-          addCheckboxes();
-        }
+        addCheckboxes();
       },
     );
   });
 }
-let previous_paragraphs = [];
-let ISObserver;
+
+
+
+function getChapter(element) {
+  switch(mode) {
+    case "mokuro":
+      return chapterId = element.getAttribute("data-page-index");
+    case "manatan":
+      let pathname = new URL(element.getAttribute("data-full-img-src")).pathname.split("/");
+      return chapterId = pathname[5] + "-" + pathname[6] + "-" + pathname[7] + "-" + pathname[8];
+    case "ttsu":
+      return chapterId = element.parentElement.id;
+  }
+}
+
 async function addCheckboxes() {
-  let container = document.querySelector(".book-content");
+  switch(mode) {
+    case "mokuro":
+      if(document.querySelector(".scrollbar-hide")) {
+        container = null;
+        contentWrapper = document.querySelectorAll(".scrollbar > div > div");
+      } else {
+        container = document.querySelector("#manga-panel");
+        contentWrapper = document.querySelectorAll("#manga-panel > div > div");
+        contentWrapper = [...contentWrapper].reverse();
+      }
+      parahraphSelector = ".textBox p";
+      break;
+    case "manatan":
+      container = null;
+      contentWrapper = document.querySelectorAll(".ocr-overlay-wrapper");
+      parahraphSelector = ".gemini-ocr-text-box";
+      break;
+    case "ttsu":
+      if(document.body.classList.contains("overflow-hidden")) {
+        container = document.querySelector(".book-content");
+      } else {
+        container = null;
+      }
+      contentWrapper = document.querySelectorAll(".ttu-book-html-wrapper");
+      parahraphSelector = ".p-text p";
+      break;
+  }
   if(!ISObserver) {
     ISObserver = new IntersectionObserver(
       (entries) => {
-        if(previous_paragraphs.length != 0) {
-          previous_paragraphs.forEach((p) => {
-            checkbox = p.firstElementChild;
+        let toBeSent = entries.filter((el) => !el.isIntersecting && pendingParagraphs.has(el.target));
+        let toBeAdded = entries.filter((el) => el.isIntersecting && !pendingParagraphs.has(el.target));
+        if(pendingParagraphs.size != 0) {
+          toBeSent.forEach((entry) => {
+            let textContainerEl = entry.target;
+            let checkbox = textContainerEl.firstElementChild;
             if(checkbox) {
               try {
                 let chapter = checkbox.getAttribute("data-chapter");
                 let index = parseInt(checkbox.getAttribute("data-index"));
-                realCheckbox = document.querySelector(
-                  '[data-index="' + index + '"]',
-                );
 
-                if(
-                  checkbox.checked === false &&
-                  realCheckbox.checked === false
-                ) {
+                if(!bookData[chapter][index]) {
+
+
                   send_text(checkbox, index, chapter);
-                  if(realCheckbox) {
-                    realCheckbox.checked = true;
-                    realCheckbox.disabled = true;
-                  }
+                  pendingParagraphs.delete(textContainerEl);
+                  ISObserver.unobserve(textContainerEl)
+                  console.log("sent", chapter, bookData[chapter][index]);
                 }
-                previous_paragraphs = previous_paragraphs.filter((el) => el != p);
-                ISObserver.unobserve(p)
 
               } catch(error) { }
             }
           });
         }
 
-        entries.forEach((entry) => {
-          if(entry.isIntersecting) {
-            previous_paragraphs.push(entry.target.cloneNode(true));
-            console.log(entry.target.textContent);
-            console.log(previous_paragraphs);
+        toBeAdded.forEach((entry) => {
+          let checkbox = entry.target.firstElementChild;
+          let chapter = checkbox.getAttribute("data-chapter");
+          let index = parseInt(checkbox.getAttribute("data-index"));
+          if(!bookData[chapter][index]) {
+            pendingParagraphs.add(entry.target);
+            console.log("observing", chapter, bookData[chapter][index]);
           }
         });
       },
@@ -95,18 +128,18 @@ async function addCheckboxes() {
   }
 
 
-  let htmlWrapperEl = document.querySelectorAll(".ttu-book-html-wrapper");
-  htmlWrapperEl.forEach((element) => {
 
-    let chapterId = element.parentElement.id;
-    paragraphs = element.querySelectorAll(".p-text p");
+  contentWrapper.forEach((element) => {
+    let chapterId = getChapter(element);
+    paragraphs = element.querySelectorAll(parahraphSelector);
     if(paragraphs.length > 0 && !paragraphs[1]?.hasAttribute("data-checkbox-added")) {
       if(!bookData[chapterId]) {
         checkbox_array = new Array(paragraphs.length).fill(false);
-        console.log("new chapter was added, ", bookData);
+        //console.log("new chapter was added, ", bookData);
         bookData[chapterId] = checkbox_array;
         chrome.storage.local.set({ [bookTitle]: bookData });
       }
+
 
       paragraphs.forEach((p, index) => {
         if(!p.dataset.checkboxAdded && p.textContent != "" && !(p.classList.contains("ttu-img-container") || p.classList.contains("ttu-illustration-container"))) {
@@ -117,7 +150,6 @@ async function addCheckboxes() {
           checkbox.dataset.chapter = chapterId;
           checkbox.checked = bookData[chapterId][index];
           checkbox.hidden = settings["Hide"];
-          console.log(bookData[chapterId][index]);
           if(checkbox.checked === true) {
             checkbox.disabled = true;
           }
@@ -135,184 +167,6 @@ async function addCheckboxes() {
 
 }
 
-async function addCheckboxesMokuro() {
-  let container = document.querySelector("#manga-panel");
-  if(!ISObserver) {
-    ISObserver = new IntersectionObserver(
-      (entries) => {
-        if(previous_paragraphs.length != 0) {
-          previous_paragraphs.forEach((p) => {
-            checkbox = p.firstElementChild;
-            let page = p.parentElement?.parentElement.getAttribute("data-page-index");
-            if(checkbox) {
-              try {
-                let chapter = checkbox.getAttribute("data-chapter");
-                let index = parseInt(checkbox.getAttribute("data-index"));
-                realCheckbox = document.querySelector(
-                  '[data-index="' + index + '"]',
-                );
-
-
-                if(!bookData[chapter][index]) {
-                  console.log("sent", chapter, page, bookData[chapter][index]);
-
-                  send_text(checkbox, index, chapter);
-                  previous_paragraphs = previous_paragraphs.filter((el) => el != p);
-                  ISObserver.unobserve(p)
-                }
-
-              } catch(error) { }
-            }
-          });
-        }
-
-        entries.forEach((entry) => {
-          if(entry.isIntersecting) {
-            previous_paragraphs.push(entry.target);
-            let checkbox = entry.target.firstElementChild;
-            let page = entry.target.parentElement?.parentElement.getAttribute("data-page-index");
-            let chapter = checkbox.getAttribute("data-chapter");
-            let index = parseInt(checkbox.getAttribute("data-index"));
-            console.log("observing", chapter, page, bookData[chapter][index]);
-          }
-        });
-      },
-      {
-        root: container,
-        threshold: 1,
-      },
-    );
-  }
-
-
-  let mangaPanelEl = document.querySelectorAll("#manga-panel > div > div");
-  mangaPanelEl = [...mangaPanelEl].reverse();
-  mangaPanelEl.forEach((element) => {
-
-    let chapterId = element.getAttribute("data-page-index");
-    paragraphs = element.querySelectorAll(".textBox p");
-    if(paragraphs.length > 0 && !paragraphs[1]?.hasAttribute("data-checkbox-added")) {
-      if(!bookData[chapterId]) {
-        checkbox_array = new Array(paragraphs.length).fill(false);
-        console.log("new chapter was added, ", bookData);
-        bookData[chapterId] = checkbox_array;
-        chrome.storage.local.set({ [bookTitle]: bookData });
-      }
-
-
-      paragraphs.forEach((p, index) => {
-        if(!p.dataset.checkboxAdded && p.textContent != "") {
-
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.dataset.index = index;
-          checkbox.dataset.chapter = chapterId;
-          checkbox.checked = bookData[chapterId][index];
-          checkbox.hidden = settings["Hide"];
-          if(checkbox.checked === true) {
-            checkbox.disabled = true;
-          }
-
-          p.prepend(checkbox);
-          p.dataset.checkboxAdded = "true";
-          checkbox.addEventListener("change", function () {
-            send_text(this, index, chapterId);
-          });
-
-        }
-      });
-      paragraphs.forEach((p) => ISObserver.observe(p))
-    };
-  });
-
-}
-
-async function addCheckboxesManatan() {
-  if(!ISObserver) {
-    ISObserver = new IntersectionObserver(
-      (entries) => {
-        let paraSet = new Set(previous_paragraphs);
-        let toBeSent = entries.filter((el) => !el.isIntersecting && paraSet.has(el.target));
-        let toBeAdded = entries.filter((el) => el.isIntersecting && !paraSet.has(el.target));
-        if(previous_paragraphs.length != 0) {
-          toBeSent.forEach((p) => {
-            checkbox = p.target.firstElementChild;
-            if(checkbox) {
-              try {
-                let chapter = checkbox.getAttribute("data-chapter");
-                let index = parseInt(checkbox.getAttribute("data-index"));
-
-                if(!bookData[chapter][index]) {
-                  console.log("sent", chapter, bookData[chapter][index]);
-
-                  send_text(checkbox, index, chapter);
-                  previous_paragraphs = previous_paragraphs.filter((el) => el != p.target);
-                  ISObserver.unobserve(p.target)
-                }
-
-              } catch(error) { }
-            }
-          });
-        }
-
-        toBeAdded.forEach((entry) => {
-          let checkbox = entry.target.firstElementChild;
-          let chapter = checkbox.getAttribute("data-chapter");
-          let index = parseInt(checkbox.getAttribute("data-index"));
-          if(!bookData[chapter][index]) {
-            previous_paragraphs.push(entry.target);
-
-            console.log("observing", chapter, bookData[chapter][index]);
-          }
-        });
-      },
-      {
-        root: null,
-        threshold: 0,
-      },
-    );
-  }
-
-
-  let mangaPanelEl = document.querySelectorAll(".ocr-overlay-wrapper");
-  mangaPanelEl.forEach((element) => {
-    let pathname = new URL(element.getAttribute("data-full-img-src")).pathname.split("/");
-    let chapterId = pathname[5] + "-" + pathname[6] + "-" + pathname[7] + "-" + pathname[8];
-    paragraphs = element.querySelectorAll(".gemini-ocr-text-box");
-    if(paragraphs.length > 0 && !paragraphs[1]?.hasAttribute("data-checkbox-added")) {
-      if(!bookData[chapterId]) {
-        checkbox_array = new Array(paragraphs.length).fill(false);
-        //console.log("new chapter was added, ", bookData);
-        bookData[chapterId] = checkbox_array;
-        chrome.storage.local.set({ [bookTitle]: bookData });
-      }
-
-
-      paragraphs.forEach((p, index) => {
-        if(!p.dataset.checkboxAdded && p.textContent != "") {
-
-          const checkbox = document.createElement("input");
-          checkbox.type = "checkbox";
-          checkbox.dataset.index = index;
-          checkbox.dataset.chapter = chapterId;
-          checkbox.checked = bookData[chapterId][index];
-          checkbox.hidden = settings["Hide"];
-          if(checkbox.checked === true) {
-            checkbox.disabled = true;
-          }
-
-          p.prepend(checkbox);
-          p.dataset.checkboxAdded = "true";
-          checkbox.addEventListener("change", function () {
-            send_text(this, index, chapterId);
-          });
-          ISObserver.observe(p);
-        }
-      });
-    };
-  });
-
-}
 
 function remove_furigana(element) {
   let p_element = element.cloneNode(true);
@@ -369,7 +223,7 @@ async function send_text(element, index, chapter) {
     chrome.runtime.sendMessage(
       {
         action: "insertContent",
-        bookId: Bookid,
+        bookId: bookId,
         text: text,
         time: Math.floor(Date.now() / 1000),
       },
@@ -389,8 +243,6 @@ async function processChapter() {
   console.log("booktitle");
 
   if(!bookTitletemp) return;
-  //if(!chapter || !bookTitletemp) return;
-  //if(chapter.id ==="" || chapter.id == "ttu-p-cover")return;
 
   bookTitletemp = bookTitletemp.textContent.split("|");
   let newTitle = bookTitletemp[0].trim();
@@ -408,27 +260,30 @@ async function processChapter() {
   }
   if(storage_loaded) {
     console.log("storage passed");
-
-    if(mokuro) {
-      await addCheckboxesMokuro();
-    } else if(manatan) {
-      await addCheckboxesManatan();
-    } else {
-      await addCheckboxes();
-    }
+    addCheckboxes();
 
   }
 }
 const observer = new MutationObserver(processChapter);
 
 const bodyObserver = new MutationObserver(async () => {
-  if(mokuro) {
-    bookContentEl = document.querySelector("#manga-panel")
-  } else if(manatan) {
-    bookContentEl = document.querySelector("#ocr-overlay-layer")
-  } else {
-    bookContentEl = document.querySelector(".book-content");
+  switch(mode) {
+    case "mokuro":
+      let continuousMode = document.querySelector(".scrollbar-hide");
+      if(continuousMode) {
+        bookContentEl = continuousMode;
+      } else {
+        bookContentEl = document.querySelector("#manga-panel");
+      }
+      break;
+    case "manatan":
+      bookContentEl = document.querySelector("#ocr-overlay-layer");
+      break;
+    case "ttsu":
+      bookContentEl = document.querySelector(".book-content");
+      break;
   }
+
   if(bookContentEl) {
     console.log("Book Content ready!");
     bodyObserver.disconnect();
@@ -445,29 +300,25 @@ function checkUrl() {
   const url = new URL(location.href);
   const namepath = url.pathname.split("/");
   if((url.pathname === "/b" || url.pathname === "/ebook-reader/b") && url.searchParams.has("id") && settings["Active"] === true) {
-    mokuro = false;
-    manatan = false;
+    mode = "ttsu";
     bodyObserver.observe(document.body, {
       childList: true,
       subtree: true,
     });
   } else if(url.host === "localhost:5173" && url.hash.startsWith("#/reader/")) {
-    manatan = false;
-    mokuro = true;
+    mode = "mokuro";
     bodyObserver.observe(document.body, {
       childList: true,
       subtree: true,
     });
   } else if(url.host == "localhost:4568" && namepath[1] == "manga" && namepath[3] == "chapter") {
-    mokuro = false;
-    manatan = true;
+    mode = "manatan"
     bodyObserver.observe(document.body, {
       childList: true,
       subtree: true,
     });
   } else if(observerRunning) {
-    mokuro = false;
-    manatan = false;
+    mode = null;
     observer.disconnect();
     observerRunning = false;
   }
@@ -510,11 +361,11 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
         p.removeAttribute("data-checkbox-added");
       });
       paragraphs = [];
-      previous_paragraphs = [];
+      previous_paragraphs = new Set();
       bookTitle = "";
       chapterId = "";
       storage_loaded = false;
-      Bookid = null;
+      bookId = null;
     }
   }
 
