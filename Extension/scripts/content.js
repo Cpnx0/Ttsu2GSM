@@ -4,7 +4,7 @@ let paragraphs = [];
 let checkbox_array;
 let bookContentEl = null;
 let bookData = {};
-let storage_loaded = false;
+let storageLoaded = false;
 let bookId = null;
 let intilize = false;
 let settings;
@@ -19,6 +19,7 @@ let ISObserver;
 let container;
 let contentWrapper;
 let parahraphSelector;
+let continuousMode;
 
 chrome.storage.local.get("settings").then((result) => {
   settings = result["settings"];
@@ -32,7 +33,7 @@ function inti() {
       { action: "getOrCreateBook", title: bookTitle },
       (response) => {
         bookId = response.bookId;
-        storage_loaded = true;
+        storageLoaded = true;
         intilize = false;
         addCheckboxes();
       },
@@ -57,9 +58,11 @@ function getChapter(element) {
 async function addCheckboxes() {
   switch(mode) {
     case "mokuro":
-      if(document.querySelector(".scrollbar-hide")) {
+      if(continuousMode) {
         container = null;
-        contentWrapper = document.querySelectorAll(".scrollbar > div > div");
+        contentWrapper = document.querySelectorAll(".scrollbar-hide .overflow-hidden");
+        console.log("mokuro");
+
       } else {
         container = document.querySelector("#manga-panel");
         contentWrapper = document.querySelectorAll("#manga-panel > div > div");
@@ -79,7 +82,7 @@ async function addCheckboxes() {
         container = null;
       }
       contentWrapper = document.querySelectorAll(".ttu-book-html-wrapper");
-      parahraphSelector = ".p-text p";
+      parahraphSelector = "p";
       break;
   }
   if(!ISObserver) {
@@ -100,6 +103,10 @@ async function addCheckboxes() {
 
 
                   send_text(checkbox, index, chapter);
+                  if(checkbox) {
+                    checkbox.disabled = true;
+                    checkbox.checked = true;
+                  }
                   pendingParagraphs.delete(textContainerEl);
                   ISObserver.unobserve(textContainerEl)
                   console.log("sent", chapter, bookData[chapter][index]);
@@ -123,6 +130,7 @@ async function addCheckboxes() {
       {
         root: container,
         threshold: 0,
+        rootMargin: "0px"
       },
     );
   }
@@ -130,8 +138,13 @@ async function addCheckboxes() {
 
 
   contentWrapper.forEach((element) => {
+
+    if(mode == "mokuro" && continuousMode) {
+      element = element.querySelector("div[draggable=false]");
+    }
     let chapterId = getChapter(element);
     paragraphs = element.querySelectorAll(parahraphSelector);
+
     if(paragraphs.length > 0 && !paragraphs[1]?.hasAttribute("data-checkbox-added")) {
       if(!bookData[chapterId]) {
         checkbox_array = new Array(paragraphs.length).fill(false);
@@ -233,6 +246,8 @@ async function send_text(element, index, chapter) {
           WSQueue.push(text);
           processWSQueue();
         }
+        console.log(text);
+
       },
     );
   });
@@ -247,29 +262,28 @@ async function processChapter() {
   bookTitletemp = bookTitletemp.textContent.split("|");
   let newTitle = bookTitletemp[0].trim();
 
-  if(newTitle !== bookTitle) {
+  if(newTitle != bookTitle) {
     bookTitle = newTitle;
-    storage_loaded = false;
+    storageLoaded = false;
   }
 
-  if(!storage_loaded && !intilize) {
+  if(!storageLoaded && !intilize) {
     console.log("inti");
 
     intilize = true;
     inti();
   }
-  if(storage_loaded) {
+  if(storageLoaded) {
     console.log("storage passed");
     addCheckboxes();
-
   }
 }
 const observer = new MutationObserver(processChapter);
 
-const bodyObserver = new MutationObserver(async () => {
+function findAndStartObserver() {
   switch(mode) {
     case "mokuro":
-      let continuousMode = document.querySelector(".scrollbar-hide");
+      continuousMode = document.querySelector(".scrollbar-hide");
       if(continuousMode) {
         bookContentEl = continuousMode;
       } else {
@@ -293,39 +307,58 @@ const bodyObserver = new MutationObserver(async () => {
       subtree: true,
     });
     processChapter();
+    return true;
   }
-});
+  return false;
+}
+
+const bodyObserver = new MutationObserver(findAndStartObserver);
 
 function checkUrl() {
+  let found;
   const url = new URL(location.href);
   const namepath = url.pathname.split("/");
+
+  console.log((url.pathname === "/b" || url.pathname === "/ebook-reader/b") && url.searchParams.has("id") && settings["Active"] === true, url);
   if((url.pathname === "/b" || url.pathname === "/ebook-reader/b") && url.searchParams.has("id") && settings["Active"] === true) {
     mode = "ttsu";
-    bodyObserver.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
+    found = findAndStartObserver();
+    if(!found) {
+      bodyObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+    }
   } else if(url.host === "localhost:5173" && url.hash.startsWith("#/reader/")) {
     mode = "mokuro";
-    bodyObserver.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
+    found = findAndStartObserver();
+    if(!found) {
+      bodyObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+    }
   } else if(url.host == "localhost:4568" && namepath[1] == "manga" && namepath[3] == "chapter") {
-    mode = "manatan"
-    bodyObserver.observe(document.body, {
-      childList: true,
-      subtree: true,
-    });
+    mode = "manatan";
+    found = findAndStartObserver();
+    if(!found) {
+      bodyObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
+    }
   } else if(observerRunning) {
     mode = null;
     observer.disconnect();
+    bodyObserver.disconnect();
     observerRunning = false;
   }
 }
 
 navigation.addEventListener("navigate", (navigateEvent) => {
-  checkUrl();
+  requestAnimationFrame(() => {
+    checkUrl();
+  });
 });
 
 chrome.storage.onChanged.addListener(async (changes, area) => {
@@ -334,26 +367,17 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   if(!changes.settings) return;
 
   let newSettings = changes.settings.newValue;
-
+  let currentParagraphs = document.querySelectorAll("p");
   if(newSettings["Active"] != settings["Active"]) {
     if(newSettings["Active"] == true) {
-      bookContentEl = document.querySelector(".book-content");
-      if(bookContentEl) {
-        observer.observe(bookContentEl, {
-          childList: true,
-          subtree: true,
-        });
-        await processChapter();
-      } else {
-        bodyObserver.observe(document.body, {
-          childList: true,
-          subtree: true,
-        });
-      }
+      settings["Active"] = newSettings["Active"];
+      checkUrl();
     } else {
-      observer.disconnect();
-      if(ISObserver) ISObserver.disconnect();
-      paragraphs.forEach((p) => {
+      if(observer)
+        observer.disconnect();
+      if(ISObserver)
+        ISObserver.disconnect();
+      currentParagraphs.forEach((p) => {
         let checkbox = p.querySelector('input[type="checkbox"]');
         if(checkbox) {
           checkbox.remove();
@@ -361,22 +385,27 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
         p.removeAttribute("data-checkbox-added");
       });
       paragraphs = [];
-      previous_paragraphs = new Set();
-      bookTitle = "";
-      chapterId = "";
-      storage_loaded = false;
+      pendingParagraphs = new Set();
+      bookTitle = null;
+      storageLoaded = false;
+      intilize = false;
       bookId = null;
+      mode = null;
     }
   }
 
-  if(paragraphs.length > 0) {
+  if(currentParagraphs.length > 0) {
     if(newSettings["Hide"] != settings["Hide"]) {
-      console.log("paragraps length: ", paragraphs.length);
+      console.log("paragraps length: ", currentParagraphs.length);
       console.log("Hide changed:", newSettings.Hide);
-
-      paragraphs.forEach((p) => {
-        p.firstElementChild.hidden = newSettings["Hide"];
-      });
+      if(newSettings["Active"]) {
+        currentParagraphs.forEach((p) => {
+          let checkbox = p.querySelector('input[type="checkbox"]');
+          if(checkbox) {
+            checkbox.hidden = newSettings["Hide"];
+          }
+        });
+      }
     }
   }
 
