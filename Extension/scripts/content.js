@@ -18,13 +18,15 @@ let pendingParagraphs = new Set();
 let ISObserver;
 let container;
 let contentWrapper;
-let parahraphSelector;
+let parahraphSelector = null;
 let continuousMode;
+const isChromiumBased = !!window.chrome;
 
 chrome.storage.local.get("settings").then((result) => {
   settings = result["settings"];
   checkUrl();
 });
+
 
 function inti() {
   chrome.storage.local.get(bookTitle).then((result) => {
@@ -255,7 +257,6 @@ async function send_text(element, index, chapter) {
 
 async function processChapter() {
   let bookTitletemp = document.querySelector("head title");
-  console.log("booktitle");
 
   if(!bookTitletemp) return;
 
@@ -274,7 +275,6 @@ async function processChapter() {
     inti();
   }
   if(storageLoaded) {
-    console.log("storage passed");
     addCheckboxes();
   }
 }
@@ -318,8 +318,9 @@ function checkUrl() {
   let found;
   const url = new URL(location.href);
   const namepath = url.pathname.split("/");
+  console.log("test");
 
-  console.log((url.pathname === "/b" || url.pathname === "/ebook-reader/b") && url.searchParams.has("id") && settings["Active"] === true, url);
+
   if((url.pathname === "/b" || url.pathname === "/ebook-reader/b") && url.searchParams.has("id") && settings["Active"] === true) {
     mode = "ttsu";
     found = findAndStartObserver();
@@ -329,7 +330,7 @@ function checkUrl() {
         subtree: true,
       });
     }
-  } else if(url.host === "localhost:5173" && url.hash.startsWith("#/reader/")) {
+  } else if(url.host === "localhost:5173" && url.hash.startsWith("#/reader/") && settings["Active"] === true) {
     mode = "mokuro";
     found = findAndStartObserver();
     if(!found) {
@@ -338,7 +339,7 @@ function checkUrl() {
         subtree: true,
       });
     }
-  } else if(url.host == "localhost:4568" && namepath[1] == "manga" && namepath[3] == "chapter") {
+  } else if(url.host == "localhost:4568" && namepath[1] == "manga" && namepath[3] == "chapter" && settings["Active"] === true) {
     mode = "manatan";
     found = findAndStartObserver();
     if(!found) {
@@ -355,11 +356,26 @@ function checkUrl() {
   }
 }
 
+
+
 navigation.addEventListener("navigate", (navigateEvent) => {
   requestAnimationFrame(() => {
     checkUrl();
   });
 });
+
+if(!isChromiumBased) {
+  browser.runtime.onMessage.addListener((msg, sender) => {
+    if(msg.action === "UrlChange") {
+      console.log("Message received: UrlChange");
+
+      checkUrl();
+
+      return Promise.resolve({ status: "ok" });
+    }
+  });
+}
+
 
 chrome.storage.onChanged.addListener(async (changes, area) => {
   if(area !== "local") return;
@@ -367,7 +383,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
   if(!changes.settings) return;
 
   let newSettings = changes.settings.newValue;
-  let currentParagraphs = document.querySelectorAll("p");
+  let currentParagraphs = document.querySelectorAll(parahraphSelector);
   if(newSettings["Active"] != settings["Active"]) {
     if(newSettings["Active"] == true) {
       settings["Active"] = newSettings["Active"];

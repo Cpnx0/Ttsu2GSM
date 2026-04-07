@@ -1,13 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Ttsu2GSM",
+  "name": "Reader2GSM",
   "version": "1.0",
-  "description": "Store text lines in Ttsu reader for GSM Stats",
-  "permissions": ["scripting","storage","unlimitedStorage","webNavigation","tabs","downloads"],
+  "description": "Track and Store text lines in supported readers for GSM Stats",
+  "permissions": ["scripting","storage","unlimitedStorage","tabs", "webNavigation","downloads","clipboardWrite"],
   "host_permissions": [
   "ws://localhost:9012/",
-  "ws://127.0.0.1:9012/",
-  "http://localhost:7275/*"
+  "http://localhost:7275/*",
+  "*://localhost/*"
 ],
   "action": {
     "default_popup": "popup/settings.html"
@@ -19,7 +19,9 @@
     "128": "images/icon-128.png"
   },
   "background":{
-    "service_worker": "background.js"
+    "service_worker": "background.js",
+    "scripts": ["background.js"],
+    "type": "module"
   },
   "content_scripts": [
     {
@@ -27,8 +29,7 @@
       "matches": [
         "https://reader.ttsu.app/*",
         "https://kamperemu.github.io/ebook-reader/*",
-        "http://localhost:5173/*",
-        "http://localhost:4568/*"
+        "http://localhost/*"
       ]
     }
   ]

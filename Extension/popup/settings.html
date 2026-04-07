@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/flatpickr.min.css" rel="stylesheet">
 </head>
 
 <body class="rounded-2">
-    <div class="card" style="width: 400px;">
+    <div class="card" style="width: 400px; height: 550px;">
     <div class="card-body form-switch form-check p-0">
         <div class="accordion accordion-flush" id="accordion">
   <div class="accordion-item">
@@ -54,14 +55,14 @@
     <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordion">
       <div class="accordion-body">
         <div class="row justify-content-center">
-            <label for="export" class="text-center text-capitalize form-label">Date Range (Optinal)</label>
+            <label class="text-center text-capitalize form-label">Date Range (Optinal)</label>
             <div class="col-6">
-                <label class="text-capitalize form-label" for="startDate">start date</label>
-                <input type="date" name="startDate" id="startDate" class="form-control">
+              <label for="exportStart">Start</label>
+              <input type="date" name="exportStart" id="exportStart" class="form-control">
             </div>
-            <div class="col-6 mb-2">
-                <label for="endDate" class="text-capitalize form-label">end date</label>
-                <input type="date" name="endDate" id="endDate" class="form-control">
+            <div class="col-6">
+              <label for="exportEnd">End</label>
+              <input type="date" name="exportEnd" id="exportEnd" class="form-control">
             </div>
             <label for="importCheckbox" class="form-label">import to GSM</label>
             <input type="checkbox" role="switch" name="importCheckbox" id="importCheckbox" class="form-check-input h5 mt-2">
@@ -73,8 +74,6 @@
               <label id="exportSuccess" class="form-label text-success mt-1" for="export" hidden>Exported Successfully</label>
               <label id="exportFailed" class="form-label text-danger mt-1" for="export" hidden>Export Failed</label>
             </div>
-
-            <a class="link-underline link-underline-opacity-0 text-capitalize text-center mt-2" href="http://localhost:7275/api/docs#/Import%2FExport/post_api_import_exstatic" target="_blank">import CSV file</a>
         </div>
       </div>
     </div>
@@ -85,6 +84,7 @@
     </div>
     </div>
     <script src="js/bootstrap.bundle.min.js"></script>
+    <script src="js/flatpickr.min.js"></script>
     <script src="js/settings.js"></script>
 </body>
 </html>

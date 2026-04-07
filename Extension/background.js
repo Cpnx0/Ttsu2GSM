@@ -1,7 +1,12 @@
 let WS = null;
 let settings = null;
 let db;
-
+let isChromiumBased;
+if(typeof window !== 'undefined') {
+  isChromiumBased = true;
+} else {
+  isChromiumBased = false;
+}
 
 chrome.storage.local.get("settings").then(result => {
   settings = result["settings"];
@@ -92,6 +97,20 @@ function keepAlive() {
   );
 }
 
+if(isChromiumBased) {
+  browser.webNavigation.onCompleted.addListener((details) => {
+    if(details.frameId === 0) {
+      console.log("Navigated to:", details.url);
+
+      browser.tabs.sendMessage(details.tabId, { action: "UrlChange" })
+        .then(response => console.log("Message sent successfully"))
+        .catch(error => console.warn("Content script not ready yet or not injected."));
+    }
+  }, {
+    url: [{ urlMatches: 'http://localhost:4568/.*' }]
+  });
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   openDB().then((result) => {
     db = result;
@@ -173,8 +192,8 @@ function exportCSV(StartDate, EndDate, Import) {
   now = now.toLocaleString().replace(/[\/:, ]/g, "-");
 
   if(StartDate != "" && EndDate != "") {
-    StartDate = new Date(StartDate + "T00:00:00");
-    EndDate = new Date(EndDate + "T23:59:59");
+    StartDate = new Date(StartDate);
+    EndDate = new Date(EndDate);
     const startUnix = Math.floor(StartDate.getTime() / 1000);
     const endUnix = Math.floor(EndDate.getTime() / 1000);
     TimeRange = IDBKeyRange.bound(startUnix, endUnix);
@@ -241,14 +260,26 @@ function exportCSV(StartDate, EndDate, Import) {
           chrome.runtime.sendMessage({ action: "exportResult", success: false });
         }
       } else {
-        let url = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          const activeTab = tabs[0];
 
-        chrome.downloads.download({
-          url: url,
-          filename: `${filename}.csv`,
-          saveAs: true
+          chrome.scripting.executeScript({
+            target: { tabId: activeTab.id },
+            func: (csvString, fileName) => {
+              const blob = new Blob([csvString], { type: 'text/csv' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.style.display = 'none';
+              a.href = url;
+              a.download = fileName;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              a.remove();
+            },
+            args: [csv, `${filename}.csv`]
+          });
         });
-        chrome.runtime.sendMessage({ action: "exportResult", success: true });
       }
 
     }
