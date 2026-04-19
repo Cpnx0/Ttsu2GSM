@@ -1,51 +1,36 @@
 <div style="text-align: center;">
 
-  # Ttsu2GSM
-Browser Extension to Store and send text from ttsu reader to GSM
+  # Reader2GSM
+Browser Extension to Store and send text from supported readers to [GSM](https://github.com/bpwhelan/GameSentenceMiner)
 </div>
-Ttsu2GSM is a chrome browser extension that automatically mark the lines you read in ttsu reader and store them and allows sending them directly to GSM. 
+Reader2GSM is a browser extension to track text lines read in supported readers, also allows exporting the data as CSV to be imported to GSM for stats. 
 
 <div style="text-align: center;">
 
-|settings|export|
+|Settings|Export|
 |--------|------|
-| ![settings](Assets/settings.png)| ![export](Assets/export.png)|
+| ![settings](Assets/Settings.png)| ![export](Assets/Export.png)|
 
 </div>
 
-## installtion:
-1- download and extract the repo.
 
-2- enable developer mode in extensions page.
+## Supported Readers:
+1- [ッツ Ebook Reader](https://github.com/ttu-ttu/ebook-reader) and [kampr's fork](https://github.com/kamperemu/ebook-reader)
 
-3- load the "extension" folder using Load unpacked.
+2- [Manatan](https://manatan.com/)
 
+## installtion from source:
+- Chrome
 
-## ttsu setup:
-1- ttsu reader view mode have to be set to paginated (continuous not supported).
+  1- download and extract the repo.
 
-2- page columns set to 1 (multi columns not tested).
+  2- enable developer mode in extensions page.
 
-## Websocket:
-1- install python.
-
-2- install websockets library for python with `pip install websockets`.
-
-3- add the websocket port 9012 to GSM settings.
-
-![GSM settings](Assets/GSM%20settings.png)
-
-4- open cmd in the repo folder and run Websocket Server using `python Websocket_Server.py` and activate websocket in the extension settings.
-
+  3- load the "extension" folder using Load unpacked.
 
 ## import CSV file to GSM:
-1- open the "Import CSV File" link in export option (while GSM is running).
+- open GSM.
+- Stats tab -> Tools -> Import ExStatic Lines -> Select your CSV file and press import button.
 
-2- in Import/Export section you can upload your file.
 
-![Impor](Assets/import.png)
-
-## Acknowledgements:
-1- [GSM](https://github.com/bpwhelan/GameSentenceMiner) (GameSentenceMiner)
-
-2- [ッツ Ebook Reader](https://github.com/ttu-ttu/ebook-reader)
+![Impor](Assets/Import.png)

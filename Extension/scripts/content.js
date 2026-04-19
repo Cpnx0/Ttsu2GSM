@@ -1,7 +1,5 @@
-let bookTitle;
-let chapters = [];
+let bookTitle = null;
 let paragraphs = [];
-let checkbox_array;
 let bookContentEl = null;
 let bookData = {};
 let storageLoaded = false;
@@ -10,12 +8,10 @@ let intilize = false;
 let settings;
 let clipboardQueue = [];
 let isProcessingClipboard = false;
-let WSQueue = [];
-let isProcessingWS = false;
 let observerRunning = false;
 let mode = null;
 let pendingParagraphs = new Set();
-let ISObserver;
+let ISObserver = null;
 let container;
 let contentWrapper;
 let parahraphSelector = null;
@@ -43,7 +39,25 @@ function inti() {
   });
 }
 
+function shutdownExtension() {
+  if(observer)
+    observer.disconnect();
 
+  if(bodyObserver)
+    bodyObserver.disconnect();
+
+  if(ISObserver)
+    ISObserver.disconnect();
+
+  paragraphs = [];
+  pendingParagraphs = new Set();
+  bookTitle = null;
+  storageLoaded = false;
+  intilize = false;
+  bookId = null;
+  mode = null;
+  observerRunning = false;
+}
 
 function getChapter(element) {
   switch(mode) {
@@ -87,6 +101,13 @@ async function addCheckboxes() {
       parahraphSelector = "p";
       break;
   }
+
+  if(ISObserver) {
+    if(ISObserver.root !== container) {
+      ISObserver.disconnect();
+      ISObserver = null;
+    }
+  }
   if(!ISObserver) {
     ISObserver = new IntersectionObserver(
       (entries) => {
@@ -114,7 +135,9 @@ async function addCheckboxes() {
                   console.log("sent", chapter, bookData[chapter][index]);
                 }
 
-              } catch(error) { }
+              } catch(error) {
+                console.log(error);
+              }
             }
           });
         }
@@ -149,9 +172,9 @@ async function addCheckboxes() {
 
     if(paragraphs.length > 0 && !paragraphs[1]?.hasAttribute("data-checkbox-added")) {
       if(!bookData[chapterId]) {
-        checkbox_array = new Array(paragraphs.length).fill(false);
+        let checkboxArray = new Array(paragraphs.length).fill(false);
         //console.log("new chapter was added, ", bookData);
-        bookData[chapterId] = checkbox_array;
+        bookData[chapterId] = checkboxArray;
         chrome.storage.local.set({ [bookTitle]: bookData });
       }
 
@@ -213,20 +236,6 @@ function processClipboardQueue() {
     });
 }
 
-function processWSQueue() {
-  if(isProcessingWS || WSQueue.length === 0) return;
-
-  isProcessingWS = true;
-  let text = WSQueue.shift();
-
-  chrome.runtime.sendMessage({ action: "sendText", text: text }, () => {
-    setTimeout(() => {
-      isProcessingWS = false;
-      processWSQueue();
-    }, 200);
-  });
-}
-
 async function send_text(element, index, chapter) {
   let text = remove_furigana(element.parentElement);
   bookData[chapter][index] = true;
@@ -244,12 +253,7 @@ async function send_text(element, index, chapter) {
       },
       () => {
         element.disabled = true;
-        if(settings?.WS && !settings?.Clipboard) {
-          WSQueue.push(text);
-          processWSQueue();
-        }
         console.log(text);
-
       },
     );
   });
@@ -318,7 +322,6 @@ function checkUrl() {
   let found;
   const url = new URL(location.href);
   const namepath = url.pathname.split("/");
-  console.log("test");
 
 
   if((url.pathname === "/b" || url.pathname === "/ebook-reader/b") && url.searchParams.has("id") && settings["Active"] === true) {
@@ -330,7 +333,7 @@ function checkUrl() {
         subtree: true,
       });
     }
-  } else if(url.host === "localhost:5173" && url.hash.startsWith("#/reader/") && settings["Active"] === true) {
+  } else if(url.port === "5173" && url.hash.startsWith("#/reader/") && settings["Active"] === true) {
     mode = "mokuro";
     found = findAndStartObserver();
     if(!found) {
@@ -339,7 +342,7 @@ function checkUrl() {
         subtree: true,
       });
     }
-  } else if(url.host == "localhost:4568" && namepath[1] == "manga" && namepath[3] == "chapter" && settings["Active"] === true) {
+  } else if(url.port == "4568" && namepath[1] == "manga" && namepath[3] == "chapter" && settings["Active"] === true) {
     mode = "manatan";
     found = findAndStartObserver();
     if(!found) {
@@ -349,16 +352,14 @@ function checkUrl() {
       });
     }
   } else if(observerRunning) {
-    mode = null;
-    observer.disconnect();
-    bodyObserver.disconnect();
-    observerRunning = false;
+    shutdownExtension();
   }
 }
 
 
 
 navigation.addEventListener("navigate", (navigateEvent) => {
+  pendingParagraphs.clear;
   requestAnimationFrame(() => {
     checkUrl();
   });
@@ -368,6 +369,7 @@ if(!isChromiumBased) {
   browser.runtime.onMessage.addListener((msg, sender) => {
     if(msg.action === "UrlChange") {
       console.log("Message received: UrlChange");
+      pendingParagraphs.clear;
 
       checkUrl();
 
@@ -389,10 +391,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
       settings["Active"] = newSettings["Active"];
       checkUrl();
     } else {
-      if(observer)
-        observer.disconnect();
-      if(ISObserver)
-        ISObserver.disconnect();
+
       currentParagraphs.forEach((p) => {
         let checkbox = p.querySelector('input[type="checkbox"]');
         if(checkbox) {
@@ -400,13 +399,7 @@ chrome.storage.onChanged.addListener(async (changes, area) => {
         }
         p.removeAttribute("data-checkbox-added");
       });
-      paragraphs = [];
-      pendingParagraphs = new Set();
-      bookTitle = null;
-      storageLoaded = false;
-      intilize = false;
-      bookId = null;
-      mode = null;
+      shutdownExtension();
     }
   }
 

@@ -1,18 +1,15 @@
-let WS = null;
 let settings = null;
 let db;
 let isChromiumBased;
+
 if(typeof window !== 'undefined') {
-  isChromiumBased = true;
-} else {
   isChromiumBased = false;
+} else {
+  isChromiumBased = true;
 }
 
 chrome.storage.local.get("settings").then(result => {
   settings = result["settings"];
-  if(settings?.WS === true) {
-    connectWebSocket();
-  }
 });
 
 function openDB() {
@@ -61,43 +58,8 @@ function openDB() {
 }
 
 
-function connectWebSocket() {
-  let WSUrl = settings?.WSPort;
-  if(!WSUrl) return;
 
-  WS = new WebSocket(WSUrl);
-
-  WS.addEventListener("open", () => {
-    console.log("WS connected");
-    keepAlive();
-  });
-
-  WS.addEventListener("error", (e) => {
-    console.log("WS error", e);
-  });
-
-  WS.addEventListener("close", () => {
-    if(settings?.WS) {
-      setTimeout(connectWebSocket, 1000);
-    }
-  });
-}
-
-function keepAlive() {
-  const keepAliveIntervalId = setInterval(
-    () => {
-      if(WS) {
-        WS.send('ping');
-      } else {
-        clearInterval(keepAliveIntervalId);
-      }
-    },
-    // Set the interval to 20 seconds to prevent the service worker from becoming inactive.
-    20 * 1000
-  );
-}
-
-if(isChromiumBased) {
+if(!isChromiumBased) {
   browser.webNavigation.onCompleted.addListener((details) => {
     if(details.frameId === 0) {
       console.log("Navigated to:", details.url);
@@ -115,9 +77,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   openDB().then((result) => {
     db = result;
 
-    if(msg.action === "sendText") {
-      if(WS?.readyState === WebSocket.OPEN) WS.send(msg.text);
-    } else if(msg.action === "getOrCreateBook") {
+    if(msg.action === "getOrCreateBook") {
       let transaction = db.transaction(["Metadata"], "readwrite");
       let Metadata = transaction.objectStore("Metadata")
       let request = Metadata.index("Title").get(msg.title);
@@ -145,8 +105,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       let request = content.add(book);
       request.onsuccess = () => sendResponse({ success: true });
       return true;
-    } else if(msg.action === "exportCSV") {
-      exportCSV(msg.StartDate, msg.EndDate, msg.Import);
     }
   });
   return true;
@@ -156,133 +114,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if(area !== "local" || !changes.settings) return;
   let newSettings = changes.settings.newValue;
 
-  if(newSettings.WS !== settings?.WS) {
-    if(newSettings.WS === true) {
-      settings = newSettings;
-      connectWebSocket();
-    } else {
-      WS?.close();
-    }
-  } else if(newSettings.WSPort !== settings?.WSPort) {
-    WS?.close();
-    settings = newSettings;
-    if(newSettings.WS) connectWebSocket();
-  }
-
   settings = newSettings;
 });
 
 chrome.runtime.onInstalled.addListener(({ reason }) => {
   if(reason === 'install') {
     chrome.storage.local.set({
-      settings: { Active: true, Hide: false, Clipboard: false, WS: false, WSPort: "ws://localhost:9012" }
+      settings: { Active: true, Hide: false, Clipboard: false }
     });
   }
 });
 
-function exportCSV(StartDate, EndDate, Import) {
-  let transaction = db.transaction(["Content", "Metadata"], "readonly");
-  let ContentTable = transaction.objectStore("Content");
-  let MetadataTable = transaction.objectStore("Metadata");
-  let TimeIndex = ContentTable.index("Time");
-
-  let TimeRange = null;
-  let filename = null;
-  let now = new Date(Date.now());
-  now = now.toLocaleString().replace(/[\/:, ]/g, "-");
-
-  if(StartDate != "" && EndDate != "") {
-    StartDate = new Date(StartDate);
-    EndDate = new Date(EndDate);
-    const startUnix = Math.floor(StartDate.getTime() / 1000);
-    const endUnix = Math.floor(EndDate.getTime() / 1000);
-    TimeRange = IDBKeyRange.bound(startUnix, endUnix);
-    filename = `Ttsu2GSM Export ${StartDate.toLocaleString().replace(/[\/:, ]/g, "-")} - ${EndDate.toLocaleString().replace(/[\/:, ]/g, "-")}`
-  } else if(StartDate != "") {
-    StartDate = new Date(StartDate + "T00:00:00");
-    const startUnix = Math.floor(StartDate.getTime() / 1000);
-    TimeRange = IDBKeyRange.lowerBound(startUnix);
-    filename = `Ttsu2GSM Export ${StartDate.toLocaleString().replace(/[\/:, ]/g, "-")} - ${now}`
-  } else if(EndDate != "") {
-    EndDate = new Date(EndDate + "T23:59:59");
-    const endUnix = Math.floor(EndDate.getTime() / 1000);
-    TimeRange = IDBKeyRange.upperBound(endUnix);
-    filename = `Ttsu2GSM Export ${EndDate.toLocaleString().replace(/[\/:, ]/g, "-")}`
-  } else {
-    filename = `Ttsu2GSM Export ${now}`;
-  }
-
-  TimeIndex.getAll(TimeRange).onsuccess = (event) => {
-    let allContent = event.target.result;
-
-    MetadataTable.getAll().onsuccess = (event) => {
-      let allMetadata = event.target.result;
-
-      let bookMap = {};
-      allMetadata.forEach(book => {
-        bookMap[book.id] = book.Title;
-      });
-
-      let rows = [["uuid", "given_identifier", "name", "line", "time"]];
-      allContent.forEach(row => {
-        let uuid = crypto.randomUUID();
-        rows.push([
-          uuid,
-          row.id,
-          bookMap[row.Bookid] || "Unknown",
-          JSON.stringify(row.Text),
-          row.Time
-        ]);
-      });
-
-      let csv = rows.map(r => r.join(",")).join("\n");
-
-      if(Import === true) {
-        let file = new File([csv], `${filename}.csv`, { type: "text/csv" });
-
-        let formData = new FormData();
-        formData.append("file", file);
-        try {
-          fetch("http://localhost:7275/api/import-exstatic", {
-            method: "POST",
-            body: formData
-          }).then(result => {
-
-            if(result.ok) {
-              chrome.runtime.sendMessage({ action: "exportResult", success: true });
-            } else {
-              chrome.runtime.sendMessage({ action: "exportResult", success: false });
-            }
-          })
-        } catch(error) {
-          console.log(error);
-
-          chrome.runtime.sendMessage({ action: "exportResult", success: false });
-        }
-      } else {
-        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-          const activeTab = tabs[0];
-
-          chrome.scripting.executeScript({
-            target: { tabId: activeTab.id },
-            func: (csvString, fileName) => {
-              const blob = new Blob([csvString], { type: 'text/csv' });
-              const url = window.URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.style.display = 'none';
-              a.href = url;
-              a.download = fileName;
-              document.body.appendChild(a);
-              a.click();
-              window.URL.revokeObjectURL(url);
-              a.remove();
-            },
-            args: [csv, `${filename}.csv`]
-          });
-        });
-      }
-
-    }
-  }
-
-}

@@ -7,9 +7,9 @@
     <link href="css/flatpickr.min.css" rel="stylesheet">
 </head>
 
-<body class="rounded-2">
-    <div class="card" style="width: 400px; height: 550px;">
-    <div class="card-body form-switch form-check p-0">
+<body class="rounded-2 container p-0" style="height: 550px; width: 400px;">
+    <div class="card">
+    <div class="card-body form-switch p-0">
         <div class="accordion accordion-flush" id="accordion">
   <div class="accordion-item">
     <h2 class="accordion-header">
@@ -30,18 +30,8 @@
         </div>
 
         <div class="row mt-3">
-            <label for="clipboardCheckbox" class="form-label text-capitalize">Use clipboard (disable websocket)</label>
+            <label for="clipboardCheckbox" class="form-label text-capitalize">Use clipboard</label>
             <input type="checkbox" role="switch" name="clipboardCheckbox" id="clipboardCheckbox" class="form-check-input h5">
-        </div>
-
-        <div class="row mt-3">
-            <label for="websocketCheckbox" class="form-label text-capitalize">Use websocket</label>
-            <input type="checkbox" role="switch" name="websocketCheckbox" id="websocketCheckbox" class="form-check-input h5">
-        </div>
-
-        <div class="row mt-3 justify-content-center">
-            <label for="websocket" class="text-center text-capitalize">websocket port</label>
-            <input type="text" name="websocket" id="websocket" class="form-control form-text text-center w-75">
         </div>
       </div>
     </div>

@@ -1,16 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Reader2GSM",
-  "version": "1.0",
+  "version": "1.0.0",
   "description": "Track and Store text lines in supported readers for GSM Stats",
-  "permissions": ["scripting","storage","unlimitedStorage","tabs", "webNavigation","downloads","clipboardWrite"],
-  "host_permissions": [
-  "ws://localhost:9012/",
-  "http://localhost:7275/*",
-  "*://localhost/*"
-],
+  "permissions": ["storage","unlimitedStorage","activeTab", "webNavigation","clipboardWrite"],
+  "host_permissions": ["http://localhost/*"],
   "action": {
     "default_popup": "popup/settings.html"
+  },
+  "options_ui": {
+    "page": "popup/settings.html",
+    "open_in_tab": true
   },
   "icons": {
     "16": "images/icon-16.png",
