@@ -1,32 +1,95 @@
 let settings;
-let ActiveCheckbox = document.querySelector("#activeCheckbox");
-let HideCheckbox = document.querySelector("#hideCheckbox");
-let ClipboardCheckbox = document.querySelector("#clipboardCheckbox");
-let ExportBtn = document.querySelector("#export");
-let ExportStartEl = document.querySelector("#exportStart");
-let ExportEndEl = document.querySelector("#exportEnd");
+let ActiveCheckbox;
+let HideCheckbox;
+let SelectPosition;
+let CustomPositionInput;
+let SaveBtn;
+let PositionArea;
+let ExportBtn;
+let ExportStartEl;
+let ExportEndEl;
+
+function changeArea(selected) {
+    switch(selected) {
+        case "default":
+            PositionArea.classList = "redBorder p-0 h-100 position-sticky";
+            break;
+        case "top":
+            PositionArea.classList = "redBorder horizontal p-0 position-sticky";
+            break;
+        case "left":
+            PositionArea.classList = "redBorder vertical p-0 position-sticky";
+            break;
+        case "bottom":
+            PositionArea.classList = "redBorder horizontal p-0 position-sticky top-100";
+            break;
+        case "right":
+            PositionArea.classList = "redBorder vertical p-0 position-sticky start-100";
+            break;
+        case "center-horizontal":
+            PositionArea.classList = "redBorder horizontal p-0 position-relative top-50 translate-middle-y";
+            break;
+        case "center-vertical":
+            PositionArea.classList = "redBorder vertical p-0 position-relative start-50 translate-middle-x";
+            break;
+        case "custom":
+            PositionArea.classList = null;
+            break;
+    }
+}
 
 async function getSettings() {
     await chrome.storage.local.get("settings").then(result => {
-        settings = result["settings"] || { Active: false, Hide: false, Clipboard: false };
+        settings = result["settings"] || { Active: true, Hide: false, SelectedPosition: "default", Position: { default: "0%", top: "0% 0% -90% 0%", left: "0% -90% 0% 0%", bottom: "-90% 0% 0% 0%", right: "0% 0% 0% -90%", "center-horizontal": "-45% 0% -45% 0%", "center-vertical": "0% -45% 0% -45%", custom: "0%" } };
+
+        if(!settings["SelectedPosition"]) {
+            settings["SelectedPosition"] = "default";
+            settings["Position"] = { default: "0%", top: "0% 0% -90% 0%", left: "0% 0% 0% -90%", bottom: "-90% 0% 0% 0%", right: "0% -90% 0% 0%", "center-horizontal": "-45% 0% -45% 0%", "center-vertical": "0% -45% 0% -45%", custom: "0%" };
+        }
 
         ActiveCheckbox.checked = settings["Active"];
         HideCheckbox.checked = settings["Hide"];
-        ClipboardCheckbox.checked = settings["Clipboard"];
+        let SelectOptions = SelectPosition.options;
+
+        for(let i = 0; i < SelectOptions.length; i++) {
+            let element = SelectOptions[i];
+            if(element.value == settings["SelectedPosition"]) {
+                element.selected = true;
+                break;
+            }
+        }
+        changeArea(settings["SelectedPosition"])
+        CustomPositionInput.value = settings["Position"][settings["SelectedPosition"]];
+        if(settings["SelectPosition"] === "custom") {
+            CustomPositionInput.disabled = false;
+        }
     });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+    ActiveCheckbox = document.querySelector("#activeCheckbox");
+    HideCheckbox = document.querySelector("#hideCheckbox");
+    SelectPosition = document.querySelector("#selectPosition");
+    CustomPositionInput = document.querySelector("#customPosition");
+    SaveBtn = document.querySelector("#saveButton");
+    PositionArea = document.querySelector("#area");
+    ExportBtn = document.querySelector("#export");
+    ExportStartEl = document.querySelector("#exportStart");
+    ExportEndEl = document.querySelector("#exportEnd");
     getSettings();
 
     const accordionCollapseElementList = document.querySelectorAll('#myAccordion .collapse');
     const accordionCollapseList = [...accordionCollapseElementList].map(accordionCollapseEl => new bootstrap.Collapse(accordionCollapseEl));
     flatpickr(ExportStartEl, {
+        static: true,
+        disableMobile: "true",
         enableTime: true,
         dateFormat: "Y-m-d H:i",
         defaultHour: 0
     });
     flatpickr(ExportEndEl, {
+        static: true,
+        disableMobile: "true",
         enableTime: true,
         enableSeconds: true,
         dateFormat: "Y-m-d H:i:s",
@@ -45,8 +108,18 @@ document.addEventListener("DOMContentLoaded", () => {
         await chrome.storage.local.set({ settings: settings });
     });
 
-    ClipboardCheckbox.addEventListener("change", async (event) => {
-        settings["Clipboard"] = event.target.checked;
+    SelectPosition.addEventListener("change", (event) => {
+        let selected = event.target.value;
+        changeArea(selected);
+        CustomPositionInput.value = settings["Position"][selected];
+    });
+
+    SaveBtn.addEventListener("click", async (event) => {
+        let selected = SelectPosition.value;
+        settings["SelectedPosition"] = selected;
+        if(selected === "custom") {
+            settings["Position"]["custom"] = CustomPositionInput.value;
+        }
         await chrome.storage.local.set({ settings: settings });
     });
 
@@ -57,7 +130,7 @@ document.addEventListener("DOMContentLoaded", () => {
         let spinner = document.querySelector("#spinner");
         spinner.removeAttribute("hidden");
         exportCSV(StartDate, EndDate, importCheckbox);
-    })
+    });
 
 });
 

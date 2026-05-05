@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Reader2GSM",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Track and Store text lines in supported readers for GSM Stats",
-  "permissions": ["storage","unlimitedStorage","activeTab", "webNavigation","clipboardWrite"],
+  "permissions": ["storage","unlimitedStorage","activeTab", "webNavigation"],
   "host_permissions": ["http://localhost/*"],
   "action": {
     "default_popup": "popup/settings.html"
@@ -29,8 +29,21 @@
       "matches": [
         "https://reader.ttsu.app/*",
         "https://kamperemu.github.io/ebook-reader/*",
+        "https://app.yatsu.moe/*",
         "http://localhost/*"
       ]
     }
-  ]
+  ],
+  "browser_specific_settings": {
+  "gecko": {
+    "id": "CPNX-Support@github.io",
+      "data_collection_permissions": {
+        "required": [
+          "websiteContent",
+          "websiteActivity"
+        ]
+      }
+    }
+  }
 }
+

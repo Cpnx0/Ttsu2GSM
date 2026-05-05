@@ -1,80 +1,135 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="css/bootstrap.min.css" rel="stylesheet">
-    <link href="css/flatpickr.min.css" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="css/bootstrap.min.css" rel="stylesheet">
+  <link href="css/flatpickr.min.css" rel="stylesheet">
 </head>
+<style>
+  .redBorder {
+    border-color: red;
+    border-style: solid;
+  }
 
-<body class="rounded-2 container p-0" style="height: 550px; width: 400px;">
-    <div class="card">
+  .vertical {
+    width: 10%;
+    height: 100%;
+  }
+
+  .horizontal {
+    width: 100%;
+    height: 10%;
+  }
+</style>
+
+<body class="rounded-2 container p-0" style="height: 600px; width: 400px;">
+  <div class="card">
     <div class="card-body form-switch p-0">
-        <div class="accordion accordion-flush" id="accordion">
-  <div class="accordion-item">
-    <h2 class="accordion-header">
-      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-        settings
-      </button>
-    </h2>
-    <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#accordion">
-      <div class="accordion-body">
-        <div class="row">
-            <label for="activeCheckbox" class="text-capitalize form-label">turn on/off the extension</label>
-            <input type="checkbox" name="activeCheckbox" id="activeCheckbox" role="switch" class="form-check-input h5">
-        </div>
-        
-        <div class="row mt-3">
-            <label for="hideCheckbox" class="text-capitalize form-label">hide checkboxes</label>
-            <input type="checkbox" name="hideCheckbox" id="hideCheckbox" role="switch" class="form-check-input h5">
-        </div>
-
-        <div class="row mt-3">
-            <label for="clipboardCheckbox" class="form-label text-capitalize">Use clipboard</label>
-            <input type="checkbox" role="switch" name="clipboardCheckbox" id="clipboardCheckbox" class="form-check-input h5">
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="accordion-item">
-    <h2 class="accordion-header">
-      <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-        Export
-      </button>
-    </h2>
-    <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordion">
-      <div class="accordion-body">
-        <div class="row justify-content-center">
-            <label class="text-center text-capitalize form-label">Date Range (Optinal)</label>
-            <div class="col-6">
-              <label for="exportStart">Start</label>
-              <input type="date" name="exportStart" id="exportStart" class="form-control">
-            </div>
-            <div class="col-6">
-              <label for="exportEnd">End</label>
-              <input type="date" name="exportEnd" id="exportEnd" class="form-control">
-            </div>
-            <label for="importCheckbox" class="form-label">import to GSM</label>
-            <input type="checkbox" role="switch" name="importCheckbox" id="importCheckbox" class="form-check-input h5 mt-2">
-            <button id="export" name="export" class="btn btn-success text-capitalize text-center rounded">Export</button>
-            <div class="d-flex justify-content-center mt-2">
-              <div id="spinner" class="spinner-border" role="status" hidden>
-                <span class="visually-hidden">Loading...</span>
+      <div class="accordion accordion-flush" id="accordion">
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne"
+              aria-expanded="true" aria-controls="collapseOne">
+              Settings
+            </button>
+          </h2>
+          <div id="collapseOne" class="accordion-collapse collapse show" data-bs-parent="#accordion">
+            <div class="accordion-body">
+              <div class="row">
+                <label for="activeCheckbox" class="text-capitalize form-label">turn on/off the extension</label>
+                <input type="checkbox" name="activeCheckbox" id="activeCheckbox" role="switch"
+                  class="form-check-input h5">
               </div>
-              <label id="exportSuccess" class="form-label text-success mt-1" for="export" hidden>Exported Successfully</label>
-              <label id="exportFailed" class="form-label text-danger mt-1" for="export" hidden>Export Failed</label>
+
+              <div class="row mt-3">
+                <label for="hideCheckbox" class="text-capitalize form-label">hide checkboxes</label>
+                <input type="checkbox" name="hideCheckbox" id="hideCheckbox" role="switch" class="form-check-input h5">
+              </div>
+
             </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+              data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+              Area
+            </button>
+          </h2>
+          <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#accordion">
+            <div class="accordion-body">
+
+              <select id="selectPosition" class="form-control">
+                <option value="default">Default</option>
+                <option value="top">Top border</option>
+                <option value="left">Left border</option>
+                <option value="bottom">Bottom border</option>
+                <option value="right">Right border</option>
+                <option value="center-horizontal">Center (Horizontal)</option>
+                <option value="center-vertical">Center (Vertical)</option>
+                <option value="custom">Custom</option>
+              </select>
+              <div class="d-flex justify-content-center my-2">
+                <input id="customPosition" class="form-control w-50" type="text" disabled>
+                <button id="saveButton" class="form-control btn btn-success w-25">Save</button>
+              </div>
+              <label class="text-secondary fw-light small text-capitalize">selected area will always be active in
+                manatan, for
+                ttsu and mokuro only in continuous mode</label>
+            </div>
+            <div class="row justify-content-center">
+              <div class="p-0" style="border-color: black; border-style: solid; width: 100px; height: 100px;">
+                <div id="area" class=""></div>
+
+              </div>
+
+            </div>
+          </div>
+        </div>
+        <div class="accordion-item">
+          <h2 class="accordion-header">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+              data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+              Export
+            </button>
+          </h2>
+          <div id="collapseThree" class="accordion-collapse collapse" data-bs-parent="#accordion">
+            <div class="accordion-body">
+              <div class="row justify-content-center">
+                <label class="text-center text-capitalize form-label">Date Range (Optinal)</label>
+                <div class="row">
+                  <input type="date" name="exportStart" id="exportStart" class="form-control" placeholder="Start">
+                </div>
+                <div class="row">
+                  <input type="date" name="exportEnd" id="exportEnd" class="form-control" placeholder="End">
+                </div>
+                <label for="importCheckbox" class="form-label">Import to GSM</label>
+                <input type="checkbox" role="switch" name="importCheckbox" id="importCheckbox"
+                  class="form-check-input h5 mt-2">
+                <button id="export" name="export"
+                  class="btn btn-success text-capitalize text-center rounded">Export</button>
+                <div class="d-flex justify-content-center mt-2">
+                  <div id="spinner" class="spinner-border" role="status" hidden>
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <label id="exportSuccess" class="form-label text-success mt-1" for="export" hidden>Exported
+                    Successfully</label>
+                  <label id="exportFailed" class="form-label text-danger mt-1" for="export" hidden>Export
+                    Failed</label>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-        </div>
-        
 
-    </div>
-    </div>
-    <script src="js/bootstrap.bundle.min.js"></script>
-    <script src="js/flatpickr.min.js"></script>
-    <script src="js/settings.js"></script>
+  <script src="js/bootstrap.bundle.min.js"></script>
+  <script src="js/flatpickr.min.js"></script>
+  <script src="js/settings.js"></script>
 </body>
+
 </html>
