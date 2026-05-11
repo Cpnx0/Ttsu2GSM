@@ -60,7 +60,10 @@ async function getSettings() {
         }
         changeArea(settings["SelectedPosition"])
         CustomPositionInput.value = settings["Position"][settings["SelectedPosition"]];
-        if(settings["SelectPosition"] === "custom") {
+
+        if(settings["SelectedPosition"] === "custom") {
+            console.log("test");
+
             CustomPositionInput.disabled = false;
         }
     });
@@ -112,13 +115,19 @@ document.addEventListener("DOMContentLoaded", () => {
         let selected = event.target.value;
         changeArea(selected);
         CustomPositionInput.value = settings["Position"][selected];
+        if(selected == "custom") {
+            CustomPositionInput.disabled = false;
+        } else {
+            CustomPositionInput.disabled = true;
+        }
     });
 
     SaveBtn.addEventListener("click", async (event) => {
         let selected = SelectPosition.value;
         settings["SelectedPosition"] = selected;
         if(selected === "custom") {
-            settings["Position"]["custom"] = CustomPositionInput.value;
+            let input = CustomPositionInput.value;
+            settings["Position"]["custom"] = input;
         }
         await chrome.storage.local.set({ settings: settings });
     });
@@ -131,6 +140,7 @@ document.addEventListener("DOMContentLoaded", () => {
         spinner.removeAttribute("hidden");
         exportCSV(StartDate, EndDate, importCheckbox);
     });
+
 
 });
 

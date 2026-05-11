@@ -346,7 +346,7 @@ function checkUrl() {
         subtree: true,
       });
     }
-  } else if(url.port == "4568" && namepath[1] == "manga" && namepath[3] == "chapter" && settings["Active"] === true) {
+  } else if(url.port == "4567" && namepath[1] == "manga" && namepath[3] == "chapter" && settings["Active"] === true) {
     mode = "manatan";
     found = findAndStartObserver();
     if(!found) {

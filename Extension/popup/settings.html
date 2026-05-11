@@ -72,12 +72,13 @@
                 <option value="custom">Custom</option>
               </select>
               <div class="d-flex justify-content-center my-2">
-                <input id="customPosition" class="form-control w-50" type="text" disabled>
+                <input id="customPosition" class="form-control w-50" type="text" pattern="(\s?-?\d+(px|%)\s?){1,4}"
+                  disabled>
                 <button id="saveButton" class="form-control btn btn-success w-25">Save</button>
               </div>
-              <label class="text-secondary fw-light small text-capitalize">selected area will always be active in
+              <label class="text-secondary fw-light small">selected area will always be used in
                 manatan, for
-                ttsu and mokuro only in continuous mode</label>
+                other readers only in continuous mode</label>
             </div>
             <div class="row justify-content-center">
               <div class="p-0" style="border-color: black; border-style: solid; width: 100px; height: 100px;">
