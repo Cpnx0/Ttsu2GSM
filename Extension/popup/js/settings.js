@@ -36,6 +36,7 @@ function changeArea(selected) {
             PositionArea.classList = null;
             break;
     }
+    SaveBtn.disabled = false;
 }
 
 async function getSettings() {
@@ -62,8 +63,6 @@ async function getSettings() {
         CustomPositionInput.value = settings["Position"][settings["SelectedPosition"]];
 
         if(settings["SelectedPosition"] === "custom") {
-            console.log("test");
-
             CustomPositionInput.disabled = false;
         }
     });
@@ -141,6 +140,14 @@ document.addEventListener("DOMContentLoaded", () => {
         exportCSV(StartDate, EndDate, importCheckbox);
     });
 
+    CustomPositionInput.addEventListener('input', () => {
+        if(!CustomPositionInput.checkValidity()) {
+            CustomPositionInput.reportValidity();
+            SaveBtn.disabled = true;
+        } else {
+            SaveBtn.disabled = false;
+        }
+    });
 
 });
 

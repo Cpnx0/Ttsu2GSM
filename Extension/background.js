@@ -121,7 +121,7 @@ if(!isChromiumBased) {
       });
     }
   }, {
-    url: [{ urlMatches: 'http://localhost:4568/.*' }]
+    url: [{ urlMatches: 'http://localhost:4567/.*' }]
   });
 }
 
