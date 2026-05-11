@@ -2,6 +2,8 @@
 
   # Reader2GSM
 Browser Extension to track and Store text in supported readers for [GSM](https://github.com/bpwhelan/GameSentenceMiner)'s stats
+
+[Chrome](https://chromewebstore.google.com/detail/reader2gsm/dndjfoghcpobimkgdhnapimmmcpfdmil)  - [Firefox](https://addons.mozilla.org/en-US/firefox/addon/reader2gsm/)
 </div>
 Reader2GSM is a browser extension to track text lines read in supported readers, also allows exporting the data as CSV to be imported to GSM for stats. 
 
